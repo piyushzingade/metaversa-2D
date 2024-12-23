@@ -1,6 +1,6 @@
 const BACKEND_URL = "http://localhost:3000";
 
-describe("auth" , () =>{
+describe("Authentication" , () =>{
 
     test('User is able to sign up', async () => { 
     
@@ -131,9 +131,55 @@ describe("User metadata endpoint" ,  () =>{
         })  
 
         expect(response.statusCode).toBe(403);
-        
+
+    })
+})
+
+describe("User avatar endpoint" ,  () =>{
+    let token;
+    let avatarId;
+    let userId;
+
+    BeforeAll(async() =>{
+        const username = "testuser" + Math.random();
+        const password = "testpassword"
+
+        const signupResponse = await axios.post(`${BACKEND_URL}/api/v1/auth/signup`, {
+            username,
+            password,
+            type: "admin" 
+        })
+
+        const response = await axios.post(`${BACKEND_URL}/api/v1/auth/signin`, {
+            username,
+            password,
+        })
+
+        const avatarResponse = await axios.post(`${BACKEND_URL}/api/v1/admin/avatar`, {
+            "imageUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQm3RFDZM21teuCMFYx_AROjt-AzUwDBROFww&s",
+            "name": "Timmy"
+        })
+        avatarId = avatarResponse.data.avatarId;
+        token = response.data .token;
+        userId = signupResponse.data.userId;
     })
 
 
+    test("Get back the avatar information for a user " , async() =>{
+        const response = await axios.get(`${BACKEND_URL}/api/v1/user/metadata/bulk?ids=[${userId}]`)
 
-} )
+        expect(response.data.avatars.length).toBe(1);
+        expect(response.data.avatars[0].userId).toBe(userId);
+    })
+
+    test("Available avatars lists the recently created avatars" , async() =>{
+        const response = await axios.get(`${BACKEND_URL}/api/v1/avatars`);
+        expect(response.data.avatars.length).not.toBe(1);
+
+        const currentAvatar = response.data.avatars.find(x => x.userId == avatarId);
+        expect(currentAvatar).toBeDefined();   
+    })
+       
+
+
+})
